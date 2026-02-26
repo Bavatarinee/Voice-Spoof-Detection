@@ -72,6 +72,14 @@ Explainable AI (Grad-CAM, SHAP)
 
 ASVspoof 2024 dataset integration
 
+Demo Screenshots
+
+<img width="764" height="835" alt="Screenshot 2026-02-25 125128" src="https://github.com/user-attachments/assets/93d86218-1d7d-4352-95e8-f5e715aeaa12" />
+
+
+<img width="659" height="508" alt="Screenshot 2026-02-25 125201" src="https://github.com/user-attachments/assets/e03521d6-efdb-4775-8e09-b15a11179bbc" />
+
+
 📜 License
 
 This project is for academic and research purposes.
