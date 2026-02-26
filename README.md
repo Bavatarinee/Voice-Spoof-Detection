@@ -49,37 +49,6 @@ Optimizer	Adam (lr = 0.0003)
 Loss	Binary Crossentropy
 
 
-Project Structure
-voice-spoof-detection/
-│
-├── backend/
-│   ├── app.py
-│   ├── predict.py
-│   ├── model/
-│   │   └── voice_model.keras
-│   ├── templates/
-│   │   └── index.html
-│   ├── static/
-│   └── training/
-│       ├── train_model.py
-│       └── evaluate_model.py
-│
-├── dataset/
-│   ├── real_samples/
-│   ├── real_mic_recorded/
-│   ├── FlashSpeech/
-│   ├── NaturalSpeech3/
-│   ├── OpenAI/
-│   ├── PromptTTS2/
-│   ├── seedtts_files/
-│   ├── VALLE/
-│   ├── VoiceBox/
-│   ├── xTTS/
-│   └── spoofed_recorded/
-│
-├── requirements.txt
-
-
 Train the Model
 python backend/training/train_model.py
 
