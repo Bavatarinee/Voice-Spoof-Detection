@@ -1,0 +1,1049 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Voice Spoof Detection System</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        :root {
+            --clr-bg1: #0a0a1a;
+            --clr-bg2: #0f0c29;
+            --clr-card: rgba(255, 255, 255, 0.055);
+            --clr-border: rgba(255, 255, 255, 0.10);
+            --clr-accent: #7c3aed;
+            --clr-accent2: #4f46e5;
+            --clr-real: #22c55e;
+            --clr-spoof: #ef4444;
+            --clr-warn: #f59e0b;
+            --clr-text: #e2e8f0;
+            --clr-muted: #94a3b8;
+            --radius: 14px;
+        }
+
+        body {
+            font-family: 'Inter', 'Segoe UI', sans-serif;
+            background: radial-gradient(ellipse at top, #1a1040 0%, #0a0a1a 60%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 48px 16px 64px;
+            color: var(--clr-text);
+        }
+
+        /* ── Header ── */
+        .hero {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+        .hero h1 {
+            font-size: 2.2rem;
+            font-weight: 800;
+            letter-spacing: -0.5px;
+            background: linear-gradient(90deg, #a78bfa, #60a5fa 60%, #34d399);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 6px;
+        }
+
+        .hero p {
+            color: var(--clr-muted);
+            font-size: 0.95rem;
+        }
+
+        /* ── Cards ── */
+        .card {
+            background: var(--clr-card);
+            border: 1px solid var(--clr-border);
+            border-radius: var(--radius);
+            padding: 28px 30px;
+            width: 100%;
+            max-width: 580px;
+            margin-bottom: 20px;
+            backdrop-filter: blur(14px);
+        }
+
+        .card h2 {
+            font-size: 1rem;
+            font-weight: 700;
+            color: #c4b5fd;
+            margin-bottom: 18px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            letter-spacing: 0.2px;
+        }
+
+        /* ── File drop ── */
+        .file-drop {
+            border: 2px dashed rgba(167, 139, 250, 0.35);
+            border-radius: 10px;
+            padding: 22px;
+            text-align: center;
+            cursor: pointer;
+            transition: border-color 0.2s, background 0.2s;
+            margin-bottom: 14px;
+        }
+
+        .file-drop:hover {
+            border-color: #a78bfa;
+            background: rgba(124, 58, 237, 0.06);
+        }
+
+        .file-drop input {
+            display: none;
+        }
+
+        .file-drop .drop-label {
+            color: var(--clr-muted);
+            font-size: 0.88rem;
+        }
+
+        .file-drop .file-name {
+            color: #a78bfa;
+            margin-top: 6px;
+            font-size: 0.88rem;
+            font-weight: 600;
+        }
+
+        audio {
+            width: 100%;
+            margin-top: 10px;
+            border-radius: 8px;
+        }
+
+        /* ── Buttons ── */
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 7px;
+            padding: 11px 22px;
+            border: none;
+            border-radius: 9px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: opacity 0.18s, transform 0.12s, box-shadow 0.18s;
+            letter-spacing: 0.2px;
+        }
+
+        .btn:hover {
+            opacity: 0.9;
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+        }
+
+        .btn:active {
+            transform: scale(0.96);
+        }
+
+        .btn:disabled {
+            opacity: 0.38;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .btn-full {
+            width: 100%;
+            justify-content: center;
+            margin-top: 12px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #7c3aed, #4f46e5);
+            color: #fff;
+        }
+
+        .btn-record {
+            background: linear-gradient(135deg, #dc2626, #b91c1c);
+            color: #fff;
+        }
+
+        .btn-stop {
+            background: linear-gradient(135deg, #16a34a, #15803d);
+            color: #fff;
+        }
+
+        .btn-save {
+            background: linear-gradient(135deg, #0891b2, #0e7490);
+            color: #fff;
+            font-size: 0.82rem;
+            padding: 9px 18px;
+        }
+
+        .btn-save-spoof {
+            background: linear-gradient(135deg, #c2410c, #9a3412);
+            color: #fff;
+            font-size: 0.82rem;
+            padding: 9px 18px;
+        }
+
+        .record-row {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 12px;
+            flex-wrap: wrap;
+        }
+
+        /* ── Timer / status ── */
+        #timerDisplay {
+            font-size: 1.7rem;
+            font-weight: 800;
+            color: #f87171;
+            text-align: center;
+            letter-spacing: 3px;
+            min-height: 38px;
+            margin-bottom: 4px;
+        }
+
+        #statusMsg {
+            text-align: center;
+            color: var(--clr-muted);
+            font-size: 0.85rem;
+            min-height: 20px;
+            margin-bottom: 10px;
+        }
+
+        .pulse-dot {
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: #f87171;
+            animation: pulse 1s infinite;
+            margin-right: 5px;
+        }
+
+        @keyframes pulse {
+
+            0%,
+            100% {
+                opacity: 1;
+                transform: scale(1);
+            }
+
+            50% {
+                opacity: 0.4;
+                transform: scale(0.7);
+            }
+        }
+
+        /* ── Tip box ── */
+        .tip {
+            background: rgba(245, 158, 11, 0.08);
+            border: 1px solid rgba(245, 158, 11, 0.22);
+            border-radius: 8px;
+            padding: 9px 14px;
+            color: #fbbf24;
+            font-size: 0.82rem;
+            margin-bottom: 14px;
+        }
+
+        /* ── Spinner ── */
+        .loading-spinner {
+            display: none;
+            width: 30px;
+            height: 30px;
+            border: 3px solid rgba(255, 255, 255, 0.15);
+            border-top-color: #a78bfa;
+            border-radius: 50%;
+            animation: spin 0.75s linear infinite;
+            margin: 16px auto;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        /* ── Result card ── */
+        #resultCard {
+            display: none;
+            background: var(--clr-card);
+            border: 1px solid var(--clr-border);
+            border-radius: var(--radius);
+            padding: 28px 30px;
+            width: 100%;
+            max-width: 580px;
+            text-align: center;
+            backdrop-filter: blur(14px);
+            margin-bottom: 20px;
+        }
+
+        #resultLabel {
+            font-size: 2rem;
+            font-weight: 800;
+            letter-spacing: 0.5px;
+            margin-bottom: 6px;
+        }
+
+        #resultLabel.real {
+            color: var(--clr-real);
+        }
+
+        #resultLabel.spoof {
+            color: var(--clr-spoof);
+        }
+
+        #resultLabel.error {
+            color: var(--clr-warn);
+            font-size: 1.3rem;
+        }
+
+        #confidenceText {
+            font-size: 1rem;
+            color: #cbd5e1;
+            margin-bottom: 4px;
+        }
+
+        .progress-bar-wrap {
+            background: rgba(255, 255, 255, 0.08);
+            border-radius: 100px;
+            height: 11px;
+            margin: 14px 0;
+            overflow: hidden;
+        }
+
+        .progress-bar-fill {
+            height: 100%;
+            border-radius: 100px;
+            transition: width 0.7s ease;
+        }
+
+        .progress-bar-fill.real {
+            background: linear-gradient(90deg, #16a34a, #4ade80);
+        }
+
+        .progress-bar-fill.spoof {
+            background: linear-gradient(90deg, #b91c1c, #f87171);
+        }
+
+        #rawScore {
+            font-size: 0.78rem;
+            color: #475569;
+            margin-top: 4px;
+            font-family: monospace;
+        }
+
+        /* Window detail panel */
+        #windowDetail {
+            display: none;
+            margin-top: 14px;
+            border-top: 1px solid var(--clr-border);
+            padding-top: 14px;
+        }
+
+        #windowDetail p {
+            font-size: 0.78rem;
+            color: #64748b;
+            margin-bottom: 6px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .window-bars {
+            display: flex;
+            gap: 5px;
+            align-items: flex-end;
+            height: 48px;
+            justify-content: center;
+        }
+
+        .window-bar {
+            flex: 1;
+            max-width: 30px;
+            border-radius: 4px 4px 0 0;
+            position: relative;
+            cursor: default;
+            transition: opacity 0.2s;
+            min-width: 10px;
+        }
+
+        .window-bar:hover {
+            opacity: 0.8;
+        }
+
+        .window-bar-label {
+            font-size: 0.62rem;
+            color: #64748b;
+            text-align: center;
+            margin-top: 3px;
+            font-family: monospace;
+        }
+
+        /* ── Waveform Visualizer ── */
+        .waveform-wrap {
+            position: relative;
+            width: 100%;
+            background: #000;
+            border-radius: 10px;
+            overflow: hidden;
+            margin-bottom: 14px;
+            height: 110px;
+            border: 1px solid rgba(0, 200, 255, 0.15);
+            box-shadow: 0 0 18px rgba(0, 200, 255, 0.08) inset;
+            transition: opacity 0.4s;
+        }
+
+        .waveform-wrap.idle {
+            opacity: 0.45;
+        }
+
+        #waveCanvas {
+            width: 100%;
+            height: 100%;
+            display: block;
+        }
+
+        .waveform-label {
+            position: absolute;
+            top: 7px;
+            left: 11px;
+            font-size: 0.65rem;
+            font-weight: 600;
+            letter-spacing: 1.2px;
+            text-transform: uppercase;
+            color: rgba(0, 230, 255, 0.5);
+            pointer-events: none;
+        }
+
+        .waveform-label.active {
+            color: rgba(0, 230, 255, 0.9);
+            text-shadow: 0 0 8px rgba(0, 230, 255, 0.6);
+        }
+
+        /* Save section */
+        .save-section {
+            display: none;
+            margin-top: 14px;
+            border-top: 1px solid var(--clr-border);
+            padding-top: 14px;
+        }
+
+        .save-section p {
+            font-size: 0.82rem;
+            color: var(--clr-muted);
+            margin-bottom: 10px;
+        }
+
+        .save-row {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        #saveMsg {
+            font-size: 0.82rem;
+            margin-top: 8px;
+            min-height: 18px;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="hero">
+        <h1>🛡️ Voice Spoof Detection</h1>
+        <p>Detect AI-generated or spoofed voices in real time</p>
+    </div>
+
+    <!-- ── File Upload ── -->
+    <div class="card">
+        <h2>📂 Upload Audio File</h2>
+        <div class="file-drop" id="dropZone" onclick="document.getElementById('audioFile').click()">
+            <input type="file" id="audioFile" accept=".wav,.mp3,.flac,.ogg,.webm,.m4a" />
+            <div class="drop-label">Click to choose a file (WAV / MP3 / FLAC / WebM)</div>
+            <div class="file-name" id="fileNameDisplay"></div>
+        </div>
+        <audio id="audioPlayerFile" controls style="display:none;"></audio>
+        <button class="btn btn-primary btn-full" id="analyzeFileBtn" onclick="analyzeFile()">🔍 Analyze File</button>
+    </div>
+
+    <!-- ── Live Recording ── -->
+    <div class="card">
+        <h2>🎙️ Live Microphone Recording</h2>
+        <div class="tip">⚠️ Record at least <strong>4 seconds</strong> of clear speech for the best accuracy
+            (multi-window analysis).</div>
+        <div id="timerDisplay"></div>
+        <div id="statusMsg">Press Start to begin recording</div>
+
+        <!-- Live waveform visualizer -->
+        <div class="waveform-wrap idle" id="waveformWrap">
+            <canvas id="waveCanvas"></canvas>
+            <span class="waveform-label" id="waveLabel">● LIVE WAVEFORM</span>
+        </div>
+
+        <div class="record-row">
+            <button class="btn btn-record" id="startBtn" onclick="startRecording()">⏺ Start Recording</button>
+            <button class="btn btn-stop" id="stopBtn" onclick="stopRecording()" disabled>⏹ Stop &amp; Analyze</button>
+        </div>
+        <audio id="audioPlayerMic" controls style="display:none;"></audio>
+
+        <!-- Save sample controls -->
+        <div class="save-section" id="saveSection">
+            <p>🎯 Help improve the model — save this recording to the dataset:</p>
+            <div class="save-row">
+                <button class="btn btn-save" id="saveRealBtn" onclick="saveSample('real')">
+                    💾 Save as Real Voice
+                </button>
+                <button class="btn btn-save-spoof" id="saveSpoofBtn" onclick="saveSample('spoof')">
+                    � Save as Spoof Voice
+                </button>
+            </div>
+            <div id="saveMsg"></div>
+        </div>
+    </div>
+
+    <!-- ── Spinner ── -->
+    <div class="loading-spinner" id="spinner"></div>
+
+    <!-- ── Result Card ── -->
+    <div id="resultCard">
+        <div id="resultLabel"></div>
+        <div class="progress-bar-wrap">
+            <div class="progress-bar-fill" id="progressBar" style="width:0%"></div>
+        </div>
+        <div id="confidenceText"></div>
+        <div id="rawScore"></div>
+        <div id="scoreBreakdown"
+            style="display:none; margin-top:8px; font-size:0.78rem; color:#64748b; font-family:monospace; text-align:left;">
+        </div>
+
+        <!-- Per-window breakdown (only shown when >1 window) -->
+        <div id="windowDetail">
+            <p>Per-window scores</p>
+            <div class="window-bars" id="windowBars"></div>
+        </div>
+    </div>
+
+    <script>
+        // ================================================================
+        //  WAV ENCODER  — 16-bit PCM WAV, no ffmpeg
+        // ================================================================
+        function encodeWAV(samples, sampleRate) {
+            const numChannels = 1;
+            const bitsPerSample = 16;
+            const byteRate = sampleRate * numChannels * (bitsPerSample / 8);
+            const blockAlign = numChannels * (bitsPerSample / 8);
+            const dataSize = samples.length * (bitsPerSample / 8);
+            const buffer = new ArrayBuffer(44 + dataSize);
+            const view = new DataView(buffer);
+
+            function writeStr(off, str) {
+                for (let i = 0; i < str.length; i++) view.setUint8(off + i, str.charCodeAt(i));
+            }
+            function f32to16(out, off, inp) {
+                for (let i = 0; i < inp.length; i++, off += 2) {
+                    const s = Math.max(-1, Math.min(1, inp[i]));
+                    out.setInt16(off, s < 0 ? s * 32768 : s * 32767, true);
+                }
+            }
+
+            writeStr(0, 'RIFF');
+            view.setUint32(4, 36 + dataSize, true);
+            writeStr(8, 'WAVE');
+            writeStr(12, 'fmt ');
+            view.setUint32(16, 16, true);
+            view.setUint16(20, 1, true);    // PCM
+            view.setUint16(22, numChannels, true);
+            view.setUint32(24, sampleRate, true);
+            view.setUint32(28, byteRate, true);
+            view.setUint16(32, blockAlign, true);
+            view.setUint16(34, bitsPerSample, true);
+            writeStr(36, 'data');
+            view.setUint32(40, dataSize, true);
+            f32to16(view, 44, samples);
+
+            return new Blob([buffer], { type: 'audio/wav' });
+        }
+
+        async function blobToWAV(rawBlob, targetSR = 22050) {
+            const arrayBuffer = await rawBlob.arrayBuffer();
+            const audioCtx = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: targetSR });
+            const decoded = await audioCtx.decodeAudioData(arrayBuffer);
+            audioCtx.close();
+
+            let samples;
+            if (decoded.numberOfChannels === 1) {
+                samples = decoded.getChannelData(0);
+            } else {
+                const ch0 = decoded.getChannelData(0);
+                const ch1 = decoded.getChannelData(1);
+                samples = new Float32Array(ch0.length);
+                for (let i = 0; i < ch0.length; i++) samples[i] = (ch0[i] + ch1[i]) * 0.5;
+            }
+            return encodeWAV(samples, targetSR);
+        }
+
+        // ================================================================
+        //  UI HELPERS
+        // ================================================================
+        function showSpinner() {
+            document.getElementById('spinner').style.display = 'block';
+            document.getElementById('resultCard').style.display = 'none';
+        }
+        function hideSpinner() { document.getElementById('spinner').style.display = 'none'; }
+
+        function showResult(data) {
+            hideSpinner();
+            const card = document.getElementById('resultCard');
+            const label = document.getElementById('resultLabel');
+            const bar = document.getElementById('progressBar');
+            const conf = document.getElementById('confidenceText');
+            const raw = document.getElementById('rawScore');
+            const breakdown = document.getElementById('scoreBreakdown');
+            const wdet = document.getElementById('windowDetail');
+            const wbars = document.getElementById('windowBars');
+
+            if (data.error) {
+                label.className = 'error';
+                label.textContent = '⚠️ Error';
+                conf.textContent = data.error;
+                bar.style.width = '0%';
+                raw.textContent = '';
+                if (breakdown) breakdown.style.display = 'none';
+                wdet.style.display = 'none';
+            } else {
+                const isReal = data.result === 'REAL VOICE';
+                label.className = isReal ? 'real' : 'spoof';
+                label.textContent = isReal ? '✅ REAL VOICE' : '🚨 SPOOF VOICE';
+
+                conf.textContent = `Confidence: ${data.confidence}%`;
+
+                bar.className = `progress-bar-fill ${isReal ? 'real' : 'spoof'}`;
+                bar.style.width = data.confidence + '%';
+
+                const thresholdStr = data.threshold !== undefined
+                    ? ` | threshold: ${data.threshold}`
+                    : '';
+                raw.textContent = `Final score: ${data.raw_score ?? 'N/A'}${thresholdStr}`;
+
+                // Score breakdown (CNN - penalty)
+                if (breakdown && data.cnn_score !== undefined) {
+                    const penalty = data.penalty ?? 0;
+                    const realVotes = data.real_votes ?? '?';
+                    const totalWin = data.windows_used ?? '?';
+                    breakdown.style.display = 'block';
+                    breakdown.innerHTML =
+                        `CNN: ${data.cnn_score} &minus; spoof penalty: ${penalty} = ${data.raw_score}` +
+                        `<br>Real votes: ${realVotes}/${totalWin} windows`;
+                } else if (breakdown) {
+                    breakdown.style.display = 'none';
+                }
+
+                // Per-window bar chart
+                const scores = data.window_scores || [];
+                if (scores.length > 1) {
+                    wdet.style.display = 'block';
+                    wbars.innerHTML = '';
+                    const threshold = data.threshold ?? 0.50;
+                    scores.forEach((s, i) => {
+                        const wrap = document.createElement('div');
+                        wrap.style.display = 'flex';
+                        wrap.style.flexDirection = 'column';
+                        wrap.style.alignItems = 'center';
+                        wrap.style.flex = '1';
+                        wrap.style.maxWidth = '36px';
+
+                        const bar = document.createElement('div');
+                        bar.className = 'window-bar';
+                        const pct = Math.round(s * 100);
+                        bar.style.height = Math.max(6, pct * 0.46) + 'px';
+                        bar.style.background = s > threshold
+                            ? 'linear-gradient(180deg,#4ade80,#16a34a)'
+                            : 'linear-gradient(180deg,#f87171,#b91c1c)';
+                        bar.title = `Window ${i + 1}: ${s.toFixed(3)} (${s > threshold ? 'REAL' : 'SPOOF'})`;
+
+                        const lbl = document.createElement('div');
+                        lbl.className = 'window-bar-label';
+                        lbl.textContent = s.toFixed(2);
+
+                        wrap.appendChild(bar);
+                        wrap.appendChild(lbl);
+                        wbars.appendChild(wrap);
+                    });
+                } else {
+                    wdet.style.display = 'none';
+                }
+            }
+            card.style.display = 'block';
+        }
+
+        async function sendToServer(wavBlob, filename) {
+            showSpinner();
+            const form = new FormData();
+            form.append('file', wavBlob, filename);
+            try {
+                const res = await fetch('/predict', { method: 'POST', body: form });
+                const data = await res.json();
+                console.log('Server response:', data);
+                showResult(data);
+            } catch (err) {
+                console.error('Fetch error:', err);
+                hideSpinner();
+                showResult({ error: 'Network error: ' + err.message });
+            }
+        }
+
+        // ================================================================
+        //  FILE UPLOAD
+        // ================================================================
+        document.getElementById('audioFile').addEventListener('change', function () {
+            const file = this.files[0];
+            if (!file) return;
+            document.getElementById('fileNameDisplay').textContent = file.name;
+            const player = document.getElementById('audioPlayerFile');
+            player.src = URL.createObjectURL(file);
+            player.style.display = 'block';
+        });
+
+        async function analyzeFile() {
+            const fi = document.getElementById('audioFile');
+            if (!fi.files.length) { alert('Please select an audio file first.'); return; }
+            const btn = document.getElementById('analyzeFileBtn');
+            btn.disabled = true;
+            try {
+                const wav = await blobToWAV(fi.files[0], 22050);
+                await sendToServer(wav, 'upload.wav');
+            } catch (err) {
+                showResult({ error: 'Audio decode error: ' + err.message });
+            } finally {
+                btn.disabled = false;
+            }
+        }
+
+        // ================================================================
+        //  WAVEFORM VISUALIZER  (oscilloscope mode, cyan on black)
+        // ================================================================
+        let waveAudioCtx = null;
+        let waveAnalyser = null;
+        let waveSource = null;
+        let waveAnimId = null;
+        let waveStream = null;   // kept separate from mediaRecorder
+
+        function initWaveCanvas() {
+            const canvas = document.getElementById('waveCanvas');
+            const wrap = document.getElementById('waveformWrap');
+            // Match canvas physical pixels to its CSS size for crisp rendering
+            canvas.width = wrap.clientWidth || 520;
+            canvas.height = wrap.clientHeight || 110;
+        }
+
+        function startWaveform(stream) {
+            initWaveCanvas();
+            const canvas = document.getElementById('waveCanvas');
+            const ctx = canvas.getContext('2d');
+            const wrap = document.getElementById('waveformWrap');
+            const label = document.getElementById('waveLabel');
+
+            wrap.classList.remove('idle');
+            label.classList.add('active');
+
+            // Build audio graph
+            waveAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            waveAnalyser = waveAudioCtx.createAnalyser();
+            waveAnalyser.fftSize = 2048;
+            waveAnalyser.smoothingTimeConstant = 0.82;
+
+            waveSource = waveAudioCtx.createMediaStreamSource(stream);
+            waveSource.connect(waveAnalyser);
+            // NOTE: Do NOT connect to destination — we don't want mic feedback
+
+            const bufLen = waveAnalyser.fftSize;
+            const dataArr = new Uint8Array(bufLen);
+
+            // Glow trail colour stops
+            const CYAN_GLOW = 'rgba(0, 220, 255, 0.18)';
+            const CYAN_CORE = '#00e5ff';
+            const CYAN_DIM = 'rgba(0, 200, 240, 0.55)';
+
+            function drawFrame() {
+                waveAnimId = requestAnimationFrame(drawFrame);
+
+                const W = canvas.width;
+                const H = canvas.height;
+
+                waveAnalyser.getByteTimeDomainData(dataArr);
+
+                // ── Background: near-black with subtle fade trail ─────────
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.30)';
+                ctx.fillRect(0, 0, W, H);
+
+                // ── Centre grid line ──────────────────────────────────────
+                ctx.beginPath();
+                ctx.strokeStyle = 'rgba(0, 200, 255, 0.08)';
+                ctx.lineWidth = 1;
+                ctx.setLineDash([4, 8]);
+                ctx.moveTo(0, H / 2);
+                ctx.lineTo(W, H / 2);
+                ctx.stroke();
+                ctx.setLineDash([]);
+
+                // ── Outer glow pass ───────────────────────────────────────
+                ctx.beginPath();
+                ctx.strokeStyle = CYAN_GLOW;
+                ctx.lineWidth = 6;
+                ctx.lineJoin = 'round';
+                ctx.lineCap = 'round';
+
+                const sliceW = W / bufLen;
+                let x = 0;
+                for (let i = 0; i < bufLen; i++) {
+                    const v = dataArr[i] / 128.0;
+                    const y = (v * H) / 2;
+                    if (i === 0) ctx.moveTo(x, y);
+                    else ctx.lineTo(x, y);
+                    x += sliceW;
+                }
+                ctx.stroke();
+
+                // ── Main bright core line ─────────────────────────────────
+                ctx.beginPath();
+                // Gradient left → right for retro oscilloscope look
+                const grad = ctx.createLinearGradient(0, 0, W, 0);
+                grad.addColorStop(0.0, CYAN_DIM);
+                grad.addColorStop(0.3, CYAN_CORE);
+                grad.addColorStop(0.7, CYAN_CORE);
+                grad.addColorStop(1.0, CYAN_DIM);
+                ctx.strokeStyle = grad;
+                ctx.lineWidth = 2;
+
+                x = 0;
+                for (let i = 0; i < bufLen; i++) {
+                    const v = dataArr[i] / 128.0;
+                    const y = (v * H) / 2;
+                    if (i === 0) ctx.moveTo(x, y);
+                    else ctx.lineTo(x, y);
+                    x += sliceW;
+                }
+                ctx.stroke();
+            }
+
+            // Clear canvas once before starting
+            const ctx0 = canvas.getContext('2d');
+            ctx0.fillStyle = '#000';
+            ctx0.fillRect(0, 0, canvas.width, canvas.height);
+
+            drawFrame();
+        }
+
+        function stopWaveform() {
+            if (waveAnimId) { cancelAnimationFrame(waveAnimId); waveAnimId = null; }
+
+            // Graceful fade-out: draw a few frames of fading line then stop
+            const canvas = document.getElementById('waveCanvas');
+            const ctx = canvas.getContext('2d');
+            let alpha = 1.0;
+            function fadeOut() {
+                alpha -= 0.08;
+                if (alpha <= 0) {
+                    ctx.fillStyle = '#000';
+                    ctx.fillRect(0, 0, canvas.width, canvas.height);
+                    return;
+                }
+                ctx.fillStyle = `rgba(0,0,0,${0.15})`;
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                requestAnimationFrame(fadeOut);
+            }
+            fadeOut();
+
+            if (waveSource) { try { waveSource.disconnect(); } catch (e) { } waveSource = null; }
+            if (waveAudioCtx) { try { waveAudioCtx.close(); } catch (e) { } waveAudioCtx = null; }
+            waveAnalyser = null;
+
+            document.getElementById('waveformWrap').classList.add('idle');
+            document.getElementById('waveLabel').classList.remove('active');
+        }
+
+        // ================================================================
+        //  LIVE RECORDING
+        // ================================================================
+        let mediaRecorder = null;
+        let audioChunks = [];
+        let timerInterval = null;
+        let recordSeconds = 0;
+        let lastWavBlob = null;  // saved for "Save sample" buttons
+
+        // Draw idle flat line on page load
+        window.addEventListener('load', () => {
+            initWaveCanvas();
+            const canvas = document.getElementById('waveCanvas');
+            const ctx = canvas.getContext('2d');
+            ctx.fillStyle = '#000';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            // Draw a subtle dim flat line
+            ctx.beginPath();
+            ctx.strokeStyle = 'rgba(0, 200, 255, 0.15)';
+            ctx.lineWidth = 1.5;
+            ctx.setLineDash([4, 6]);
+            ctx.moveTo(0, canvas.height / 2);
+            ctx.lineTo(canvas.width, canvas.height / 2);
+            ctx.stroke();
+            ctx.setLineDash([]);
+        });
+
+        async function startRecording() {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({
+                    audio: {
+                        echoCancellation: true,
+                        noiseSuppression: true,
+                        sampleRate: 22050,
+                    },
+                    video: false
+                });
+
+                // ── Start waveform immediately on the same stream ─────────
+                startWaveform(stream);
+
+                const mimeTypes = [
+                    'audio/webm;codecs=opus', 'audio/webm',
+                    'audio/ogg;codecs=opus', 'audio/ogg', ''
+                ];
+                const mimeType = mimeTypes.find(t => t === '' || MediaRecorder.isTypeSupported(t));
+                console.log('Recording MIME:', mimeType || '(browser default)');
+
+                mediaRecorder = new MediaRecorder(stream, mimeType ? { mimeType } : {});
+                audioChunks = [];
+                recordSeconds = 0;
+                lastWavBlob = null;
+
+                mediaRecorder.ondataavailable = e => { if (e.data.size > 0) audioChunks.push(e.data); };
+                mediaRecorder.start(250);
+
+                document.getElementById('startBtn').disabled = true;
+                document.getElementById('stopBtn').disabled = false;
+                document.getElementById('audioPlayerMic').style.display = 'none';
+                document.getElementById('saveSection').style.display = 'none';
+                document.getElementById('saveMsg').textContent = '';
+                document.getElementById('statusMsg').innerHTML =
+                    '<span class="pulse-dot"></span>Recording... Speak clearly';
+
+                timerInterval = setInterval(() => {
+                    recordSeconds++;
+                    const mm = String(Math.floor(recordSeconds / 60)).padStart(2, '0');
+                    const ss = String(recordSeconds % 60).padStart(2, '0');
+                    document.getElementById('timerDisplay').textContent = `${mm}:${ss}`;
+                }, 1000);
+
+            } catch (err) {
+                alert('Microphone access denied: ' + err.message);
+            }
+        }
+
+        async function stopRecording() {
+            if (!mediaRecorder) return;
+            if (recordSeconds < 2) {
+                alert('Please record for at least 2 seconds.');
+                return;
+            }
+
+            clearInterval(timerInterval);
+            stopWaveform();   // ← stop & fade out the waveform
+            document.getElementById('startBtn').disabled = false;
+            document.getElementById('stopBtn').disabled = true;
+            document.getElementById('timerDisplay').textContent = '';
+            document.getElementById('statusMsg').textContent = 'Converting audio…';
+
+            mediaRecorder.stop();
+
+            mediaRecorder.onstop = async () => {
+                mediaRecorder.stream.getTracks().forEach(t => t.stop());
+
+                const rawMime = mediaRecorder.mimeType || 'audio/webm';
+                const rawBlob = new Blob(audioChunks, { type: rawMime });
+
+                const player = document.getElementById('audioPlayerMic');
+                player.src = URL.createObjectURL(rawBlob);
+                player.style.display = 'block';
+
+                document.getElementById('statusMsg').textContent = 'Encoding WAV & analyzing…';
+
+                try {
+                    const wavBlob = await blobToWAV(rawBlob, 22050);
+                    lastWavBlob = wavBlob;
+                    await sendToServer(wavBlob, 'recording.wav');
+
+                    // Show save buttons
+                    document.getElementById('saveSection').style.display = 'block';
+                    document.getElementById('saveRealBtn').disabled = false;
+                    document.getElementById('saveSpoofBtn').disabled = false;
+                    document.getElementById('saveRealBtn').textContent = '💾 Save as Real Voice';
+                    document.getElementById('saveSpoofBtn').textContent = '🚨 Save as Spoof Voice';
+                } catch (err) {
+                    console.error(err);
+                    showResult({ error: 'Audio encode error: ' + err.message });
+                }
+
+                document.getElementById('statusMsg').textContent = 'Press Start to record again';
+            };
+        }
+
+        // ================================================================
+        //  SAVE SAMPLE  (real or spoof)
+        // ================================================================
+        async function saveSample(type) {
+            if (!lastWavBlob) {
+                alert('No recording found. Please record your voice first.');
+                return;
+            }
+
+            const isReal = type === 'real';
+            const realBtn = document.getElementById('saveRealBtn');
+            const spoofBtn = document.getElementById('saveSpoofBtn');
+            const msgEl = document.getElementById('saveMsg');
+            const endpoint = isReal ? '/save-real' : '/save-spoof';
+            const filename = isReal ? 'real_sample.wav' : 'spoof_sample.wav';
+
+            realBtn.disabled = true;
+            spoofBtn.disabled = true;
+            msgEl.style.color = '#94a3b8';
+            msgEl.textContent = 'Saving…';
+
+            try {
+                const form = new FormData();
+                form.append('file', lastWavBlob, filename);
+                const res = await fetch(endpoint, { method: 'POST', body: form });
+                const data = await res.json();
+
+                if (data.error) {
+                    msgEl.style.color = '#f87171';
+                    msgEl.textContent = '❌ Error: ' + data.error;
+                    realBtn.disabled = false;
+                    spoofBtn.disabled = false;
+                } else {
+                    msgEl.style.color = '#4ade80';
+                    const keyTotal = isReal ? data.total_mic_samples : data.total_spoof_samples;
+                    msgEl.textContent =
+                        `✅ ${data.message} · Retrain when you have 50+ new samples.`;
+                    // Mark the clicked button
+                    if (isReal) {
+                        realBtn.textContent = '✅ Saved!';
+                    } else {
+                        spoofBtn.textContent = '✅ Saved!';
+                    }
+                }
+            } catch (err) {
+                msgEl.style.color = '#f87171';
+                msgEl.textContent = '❌ Network error: ' + err.message;
+                realBtn.disabled = false;
+                spoofBtn.disabled = false;
+            }
+        }
+    </script>
+</body>
+
+</html>
