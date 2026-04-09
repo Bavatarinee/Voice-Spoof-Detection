@@ -33,44 +33,6 @@ The model underwent rigorous testing over unseen audio samples. Below are the ge
     *   `Spoofed Voice` - 99.78%
 *   **ROC AUC Score:** 0.9997
 
-### Visual Dashboards
-
-<details>
-<summary><b>1. Confusion Matrix</b> <i>(Click to expand)</i></summary>
-<br/>
-<img src="backend/training/evaluation_results/confusion_matrix.png" alt="Confusion Matrix" width="600"/>
-</details>
-
-<details>
-<summary><b>2. Score Distribution (Confidence Map)</b> <i>(Click to expand)</i></summary>
-<br/>
-<img src="backend/training/evaluation_results/score_distribution.png" alt="Score Distribution Map" width="600"/>
-</details>
-
-<details>
-<summary><b>3. ROC Curve</b> <i>(Click to expand)</i></summary>
-<br/>
-<img src="backend/training/evaluation_results/roc_curve.png" alt="Receiver Operating Characteristic Curve" width="600"/>
-</details>
-
-<details>
-<summary><b>4. Precision-Recall Curve</b> <i>(Click to expand)</i></summary>
-<br/>
-<img src="backend/training/evaluation_results/precision_recall_curve.png" alt="Precision Recall Curve" width="600"/>
-</details>
-
-<details>
-<summary><b>5. Per-Class Accuracy</b> <i>(Click to expand)</i></summary>
-<br/>
-<img src="backend/training/evaluation_results/per_class_accuracy.png" alt="Per Class Accuracy" width="600"/>
-</details>
-
-<details>
-<summary><b>6. Metrics Summary Hex/Grid</b> <i>(Click to expand)</i></summary>
-<br/>
-<img src="backend/training/evaluation_results/metrics_summary.png" alt="General Metrics Review" width="600"/>
-</details>
-
 
 ## 📂 Project Structure
 
