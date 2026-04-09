@@ -1,8 +1,7 @@
 # ✨ Hybrid Voice Spoofing Detection System
 
 ![Accuracy Badge](https://img.shields.io/badge/Accuracy-99.89%25-brightgreen)
-![Python Backend](https://img.shields.io/badge/Backend-Flask%2fPython-blue)
-![Frontend Mobile](https://img.shields.io/badge/Frontend-React_Native_PWA-blueviolet)
+
 
 This repository contains the codebase and evaluation outputs for a **Hybrid Voice Spoofing Detection System**. It explores the challenge of distinguishing between genuine human voices and AI-generated synthesised voices (voice spoofing) via microphone recordings. 
 
