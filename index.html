@@ -1,0 +1,1001 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Voice Spoof" />
+  <meta name="theme-color" content="#0a0a1a" />
+  <meta name="description" content="Detect AI-generated or spoofed voices using deep learning" />
+  <title>Voice Spoof Detection</title>
+  <link rel="manifest" href="/static/manifest.json" />
+  <link rel="apple-touch-icon" href="/static/icon-192.png" />
+
+  <style>
+    /* ── Reset & Base ── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg1: #0a0a1a;
+      --bg2: #0d0b20;
+      --card: rgba(255,255,255,0.05);
+      --border: rgba(255,255,255,0.09);
+      --accent: #7c3aed;
+      --accent2: #4f46e5;
+      --real: #22c55e;
+      --spoof: #ef4444;
+      --warn: #f59e0b;
+      --text: #e2e8f0;
+      --sub: #94a3b8;
+      --muted: #64748b;
+      --purple: #c4b5fd;
+      --radius: 14px;
+      --radius-sm: 8px;
+    }
+    html, body {
+      height: 100%; background: var(--bg1); color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', sans-serif;
+      -webkit-font-smoothing: antialiased; overflow-x: hidden;
+    }
+    body { padding-bottom: env(safe-area-inset-bottom); }
+
+    /* ── Layout ── */
+    .app { max-width: 600px; margin: 0 auto; padding: 0 16px 80px; }
+
+    /* ── Header ── */
+    .header {
+      padding: 60px 0 24px;
+      background: linear-gradient(180deg, rgba(124,58,237,0.18) 0%, rgba(79,70,229,0.05) 60%, transparent 100%);
+      margin: 0 -16px 20px; padding: 60px 20px 24px;
+    }
+    .header-row { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px; }
+    .header h1 { font-size: 26px; font-weight: 800; color: var(--purple); letter-spacing: -0.5px; line-height: 1.1; }
+    .header h1 span { display: block; font-size: 13px; font-weight: 500; color: var(--muted); margin-top: 2px; }
+    .header p { font-size: 13px; color: var(--sub); line-height: 1.5; }
+
+    /* ── Connection Badge ── */
+    .conn-badge {
+      display: flex; align-items: center; gap: 5px;
+      padding: 5px 10px; border-radius: 999px;
+      border: 1px solid rgba(255,255,255,0.08);
+      background: rgba(255,255,255,0.05);
+      font-size: 11px; font-weight: 600; cursor: pointer;
+      transition: opacity 0.2s; white-space: nowrap;
+    }
+    .conn-badge:active { opacity: 0.7; }
+    .conn-dot { width: 7px; height: 7px; border-radius: 50%; }
+
+    /* ── Tabs ── */
+    .tabs { display: flex; gap: 4px; background: rgba(255,255,255,0.04); border-radius: var(--radius); padding: 4px; margin-bottom: 18px; }
+    .tab { flex: 1; padding: 9px 4px; border: none; border-radius: 10px; background: transparent;
+      color: var(--muted); font-size: 12px; font-weight: 600; cursor: pointer; transition: all 0.2s; }
+    .tab.active { background: rgba(124,58,237,0.25); color: var(--purple); }
+
+    /* ── Cards ── */
+    .card {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 20px; margin-bottom: 16px;
+    }
+    .card-title { display: flex; align-items: center; gap: 8px; margin-bottom: 16px; }
+    .card-title-text { font-size: 14px; font-weight: 700; color: var(--purple); }
+
+    /* ── Upload Zone ── */
+    .upload-zone {
+      border: 1.5px dashed rgba(196,181,253,0.3); border-radius: 10px;
+      padding: 28px 20px; text-align: center; cursor: pointer; margin-bottom: 12px;
+      transition: all 0.2s; background: rgba(124,58,237,0.03);
+    }
+    .upload-zone:active, .upload-zone.drag-over { background: rgba(124,58,237,0.08); border-color: var(--accent); }
+    .upload-icon { font-size: 32px; margin-bottom: 8px; }
+    .upload-label { font-size: 14px; color: var(--sub); margin-bottom: 4px; }
+    .upload-sub { font-size: 12px; color: var(--muted); }
+    .file-name { font-size: 13px; color: var(--purple); font-weight: 600; margin-top: 8px; word-break: break-all; }
+    input[type="file"] { display: none; }
+
+    /* ── Tip Box ── */
+    .tip-box {
+      display: flex; gap: 8px; align-items: flex-start;
+      background: rgba(245,158,11,0.08); border: 1px solid rgba(245,158,11,0.2);
+      border-radius: var(--radius-sm); padding: 10px 12px; margin-bottom: 14px;
+      font-size: 12px; color: #fbbf24; line-height: 1.5;
+    }
+
+    /* ── Waveform ── */
+    .waveform {
+      width: 100%; height: 80px; background: rgba(0,0,0,0.4);
+      border-radius: 10px; border: 1px solid rgba(34,211,238,0.12);
+      display: flex; align-items: center; justify-content: center;
+      gap: 2px; padding: 8px; margin-bottom: 14px;
+      position: relative; overflow: hidden;
+    }
+    .wave-bar {
+      width: 3px; border-radius: 2px; background: rgba(34,197,238,0.18);
+      transition: height 0.1s ease; flex-shrink: 0;
+    }
+    .wave-bar.active { background: rgba(34,197,238,0.8); }
+    .wave-label {
+      position: absolute; top: 7px; left: 10px;
+      font-size: 9px; font-weight: 700; letter-spacing: 1.3px;
+      color: rgba(34,211,238,0.35); text-transform: uppercase;
+    }
+    .wave-label.active { color: rgba(34,211,238,0.95); }
+
+    /* ── Timer ── */
+    .timer { font-size: 42px; font-weight: 800; color: #f87171; text-align: center; letter-spacing: 5px; margin-bottom: 6px; font-variant-numeric: tabular-nums; }
+    .status-row { display: flex; align-items: center; justify-content: center; gap: 6px; margin-bottom: 12px; min-height: 22px; }
+    .pulse-dot { width: 9px; height: 9px; border-radius: 50%; background: #f87171; animation: pulse 1s ease-in-out infinite; }
+    @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.2; } }
+    .status-msg { font-size: 13px; color: var(--sub); }
+
+    /* ── Buttons ── */
+    .btn {
+      display: flex; align-items: center; justify-content: center; gap: 7px;
+      padding: 13px 18px; border-radius: var(--radius-sm); border: none;
+      font-size: 13px; font-weight: 700; cursor: pointer; width: 100%;
+      transition: all 0.15s; -webkit-tap-highlight-color: transparent;
+      letter-spacing: 0.2px;
+    }
+    .btn:active { transform: scale(0.97); opacity: 0.9; }
+    .btn:disabled { opacity: 0.4; pointer-events: none; }
+    .btn-row { display: flex; gap: 10px; margin-bottom: 4px; }
+    .btn-row .btn { flex: 1; }
+    .btn-accent { background: linear-gradient(135deg, var(--accent), var(--accent2)); color: #fff; }
+    .btn-record { background: linear-gradient(135deg, #dc2626, #b91c1c); color: #fff; }
+    .btn-stop   { background: linear-gradient(135deg, #16a34a, #15803d); color: #fff; }
+    .btn-cyan   { background: #0891b2; color: #fff; margin-top: 10px; }
+    .btn-real   { background: #0891b2; color: #fff; flex: 1; }
+    .btn-spoof  { background: #c2410c; color: #fff; flex: 1; }
+    .btn-ghost  { background: rgba(255,255,255,0.06); border: 1px solid var(--border); color: var(--sub); }
+    .btn-full   { margin-top: 6px; }
+
+    /* ── Save Section ── */
+    .save-section { border-top: 1px solid var(--border); padding-top: 14px; margin-top: 14px; }
+    .save-title { font-size: 12px; color: var(--sub); margin-bottom: 10px; }
+    .save-row { display: flex; gap: 10px; }
+    .save-msg { font-size: 12px; margin-top: 8px; line-height: 1.5; }
+
+    /* ── Spinner ── */
+    .spinner-wrap { text-align: center; padding: 28px 20px; }
+    .spinner {
+      width: 44px; height: 44px; border: 3px solid rgba(124,58,237,0.2);
+      border-top-color: var(--accent); border-radius: 50%;
+      animation: spin 0.8s linear infinite; margin: 0 auto 12px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .spinner-text { font-size: 14px; font-weight: 600; color: var(--sub); }
+    .spinner-sub { font-size: 11px; color: var(--muted); margin-top: 4px; }
+
+    /* ── Result Card ── */
+    .result-card {
+      border: 1px solid var(--border); border-radius: var(--radius);
+      padding: 24px 20px; text-align: center; margin-bottom: 16px;
+      position: relative; overflow: hidden;
+    }
+    .result-icon { font-size: 44px; margin-bottom: 6px; }
+    .result-label { font-size: 28px; font-weight: 800; letter-spacing: 0.5px; margin-bottom: 8px; }
+    .confidence-bar-wrap {
+      width: 100%; height: 10px; background: rgba(255,255,255,0.07);
+      border-radius: 999px; overflow: hidden; margin: 12px 0;
+    }
+    .confidence-bar-fill { height: 100%; border-radius: 999px; transition: width 0.8s ease; }
+    .confidence-text { font-size: 14px; color: #cbd5e1; margin-bottom: 4px; }
+    .score-text { font-size: 11px; color: var(--muted); font-family: monospace; margin-top: 4px; line-height: 1.6; }
+    .result-bg { position: absolute; inset: 0; opacity: 0.07; pointer-events: none; }
+
+    /* ── Window Bars ── */
+    .window-bars { border-top: 1px solid var(--border); padding-top: 14px; margin-top: 14px; }
+    .window-bars-title { font-size: 10px; color: var(--muted); font-weight: 700; text-transform: uppercase; letter-spacing: 0.7px; margin-bottom: 10px; }
+    .window-bars-row { display: flex; align-items: flex-end; height: 60px; gap: 4px; justify-content: center; flex-wrap: wrap; }
+    .window-bar-col { display: flex; flex-direction: column; align-items: center; width: 28px; }
+    .window-bar-fill { width: 100%; border-radius: 3px; }
+    .window-bar-label { font-size: 8px; color: var(--muted); margin-top: 2px; font-family: monospace; }
+
+    /* ── History ── */
+    .stats-banner { display: flex; background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px; margin-bottom: 16px; justify-content: space-around; }
+    .stat-pill { text-align: center; }
+    .stat-value { font-size: 22px; font-weight: 800; }
+    .stat-label { font-size: 10px; color: var(--muted); font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; }
+    .history-item {
+      background: var(--card); border: 1px solid var(--border); border-radius: var(--radius);
+      padding: 14px; margin-bottom: 10px; display: flex; gap: 12px; align-items: center;
+      position: relative; overflow: hidden;
+    }
+    .history-icon { font-size: 28px; flex-shrink: 0; }
+    .history-body { flex: 1; }
+    .history-result { font-size: 15px; font-weight: 800; letter-spacing: 0.3px; margin-bottom: 2px; }
+    .history-source { font-size: 12px; color: var(--muted); margin-bottom: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .history-meta { font-size: 11px; color: var(--sub); }
+    .history-bar-wrap { width: 100%; height: 3px; background: rgba(255,255,255,0.06); border-radius: 999px; overflow: hidden; margin-top: 6px; }
+    .history-bar-fill { height: 100%; border-radius: 999px; }
+    .history-delete { background: rgba(255,255,255,0.04); border: none; border-radius: 6px; padding: 6px 8px; cursor: pointer; color: var(--muted); font-size: 14px; flex-shrink: 0; }
+    .empty-state { text-align: center; padding: 60px 20px; color: var(--muted); }
+    .empty-state p { margin-top: 12px; line-height: 1.5; }
+
+    /* ── Settings ── */
+    .section-head { display: flex; align-items: center; gap: 6px; margin-bottom: 14px; }
+    .section-label { font-size: 10px; font-weight: 800; color: var(--accent); letter-spacing: 1.2px; text-transform: uppercase; }
+    .input-label { font-size: 12px; color: var(--sub); font-weight: 600; margin-bottom: 6px; }
+    .url-input {
+      width: 100%; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.12);
+      border-radius: var(--radius-sm); padding: 12px 14px; color: var(--text);
+      font-size: 14px; font-weight: 600; font-family: monospace; margin-bottom: 8px;
+    }
+    .url-input:focus { outline: none; border-color: rgba(124,58,237,0.5); }
+    .input-hint { font-size: 11px; color: var(--muted); line-height: 1.6; margin-bottom: 14px; }
+    .setting-row { display: flex; align-items: center; padding: 10px 0; gap: 12px; }
+    .setting-icon { width: 32px; height: 32px; border-radius: 8px; background: rgba(124,58,237,0.1); display: flex; align-items: center; justify-content: center; font-size: 16px; flex-shrink: 0; }
+    .setting-body { flex: 1; }
+    .setting-label { font-size: 13px; font-weight: 600; }
+    .setting-desc { font-size: 11px; color: var(--muted); margin-top: 1px; }
+    .divider { height: 1px; background: var(--border); margin: 2px 0; }
+    .conn-result {
+      display: flex; align-items: flex-start; gap: 10px;
+      padding: 12px; border-radius: var(--radius-sm); border: 1px solid;
+      margin-bottom: 10px; font-size: 13px; font-weight: 700;
+    }
+    .conn-result .detail { font-size: 11px; color: var(--sub); margin-top: 3px; font-weight: 400; line-height: 1.5; }
+    .current-url-box { background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.06); border-radius: var(--radius-sm); padding: 10px; margin-top: 4px; }
+    .current-url-label { font-size: 10px; color: var(--muted); font-weight: 700; letter-spacing: 0.5px; margin-bottom: 3px; }
+    .current-url-val { font-size: 12px; color: var(--purple); font-family: monospace; word-break: break-all; }
+    .url-btn-row { display: flex; gap: 10px; }
+    .url-btn-row .btn { flex: 1; }
+    .danger-btn { background: rgba(239,68,68,0.1); border: 1px solid rgba(239,68,68,0.25); color: var(--spoof); border-radius: 999px; padding: 5px 12px; font-size: 12px; font-weight: 700; cursor: pointer; }
+    .tip-list li { font-size: 12px; color: var(--sub); line-height: 1.8; list-style: none; }
+
+    /* ── Bottom Nav ── */
+    .bottom-nav {
+      position: fixed; bottom: 0; left: 0; right: 0;
+      background: rgba(13,11,32,0.95); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+      border-top: 1px solid rgba(124,58,237,0.25);
+      display: flex; padding: 8px 0 calc(8px + env(safe-area-inset-bottom));
+      z-index: 100;
+    }
+    .nav-item { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 3px; cursor: pointer; padding: 4px 0; -webkit-tap-highlight-color: transparent; }
+    .nav-icon { font-size: 22px; transition: transform 0.2s; }
+    .nav-label { font-size: 10px; font-weight: 600; color: var(--muted); letter-spacing: 0.3px; }
+    .nav-item.active .nav-label { color: var(--accent); }
+    .nav-item.active .nav-icon { transform: scale(1.1); }
+
+    /* ── Page Sections ── */
+    .page { display: none; }
+    .page.active { display: block; }
+
+    /* ── Install Banner ── */
+    .install-banner {
+      background: linear-gradient(135deg, rgba(124,58,237,0.15), rgba(79,70,229,0.08));
+      border: 1px solid rgba(124,58,237,0.25); border-radius: var(--radius);
+      padding: 14px 16px; margin-bottom: 16px; display: flex; gap: 12px; align-items: center;
+    }
+    .install-banner p { font-size: 12px; color: var(--sub); line-height: 1.5; flex: 1; }
+    .install-banner strong { color: var(--purple); }
+
+    /* ── Audio player ── */
+    audio { width: 100%; border-radius: 8px; margin-top: 8px; }
+  </style>
+</head>
+<body>
+
+<div class="app">
+
+  <!-- ═══ DETECT PAGE ═══ -->
+  <div class="page active" id="page-detect">
+
+    <!-- Header -->
+    <div class="header">
+      <div class="header-row">
+        <h1>🛡️ Voice Spoof<span>Detection System</span></h1>
+        <div class="conn-badge" id="conn-badge" onclick="pingBackend()">
+          <div class="conn-dot" id="conn-dot" style="background:#f59e0b"></div>
+          <span id="conn-label">Checking…</span>
+        </div>
+      </div>
+      <p>Detect AI-generated or spoofed voices using deep learning</p>
+    </div>
+
+    <!-- Install Banner (hidden after dismiss) -->
+    <div class="install-banner" id="install-banner">
+      <span style="font-size:22px">📲</span>
+      <p><strong>Install this app!</strong> Tap Share → "Add to Home Screen" in Safari to use as a native app.</p>
+      <button onclick="document.getElementById('install-banner').style.display='none'" style="background:none;border:none;color:var(--muted);font-size:18px;cursor:pointer;padding:0 4px">✕</button>
+    </div>
+
+    <!-- Upload Card -->
+    <div class="card">
+      <div class="card-title">
+        <span>📂</span>
+        <span class="card-title-text">Upload Audio File</span>
+      </div>
+
+      <!-- Use <label> for iOS Safari compatibility — most reliable way to trigger file picker -->
+      <label for="file-input" class="upload-zone" id="upload-zone">
+        <div class="upload-icon">🎵</div>
+        <div class="upload-label">Tap to choose file</div>
+        <div class="upload-sub">WAV · MP3 · FLAC · M4A · Any audio</div>
+        <div class="file-name" id="file-name-label"></div>
+      </label>
+      <!-- No accept filter: iOS ignores many audio MIME types. We validate in JS instead. -->
+      <input type="file" id="file-input" style="display:none" onchange="onFileSelected(this)" />
+
+      <div id="file-audio-player"></div>
+
+      <button class="btn btn-accent btn-full" id="analyze-file-btn" onclick="analyzeFile()" disabled>
+        🔍 Analyze File
+      </button>
+    </div>
+
+    <!-- Recording Card -->
+    <div class="card">
+      <div class="card-title">
+        <span>🎙️</span>
+        <span class="card-title-text">Live Microphone</span>
+      </div>
+
+      <div class="tip-box">
+        ℹ️ Record at least <strong>4 seconds</strong> of clear speech for multi-window analysis.
+      </div>
+
+      <div class="timer" id="timer" style="display:none">00:00</div>
+
+      <div class="status-row">
+        <div class="pulse-dot" id="pulse-dot" style="display:none"></div>
+        <div class="status-msg" id="status-msg">Tap Start to record your voice</div>
+      </div>
+
+      <!-- Waveform -->
+      <div class="waveform" id="waveform">
+        <div class="wave-label" id="wave-label">● LIVE WAVEFORM</div>
+      </div>
+
+      <div class="btn-row">
+        <button class="btn btn-record" id="start-btn" onclick="startRecording()">⏺ Start</button>
+        <button class="btn btn-stop" id="stop-btn" onclick="stopRecording()" disabled>⏹ Stop &amp; Analyze</button>
+      </div>
+
+      <div id="mic-audio-player"></div>
+
+      <!-- Save section -->
+      <div class="save-section" id="save-section" style="display:none">
+        <div class="save-title">🎯 Help improve the model — label this recording:</div>
+        <div class="save-row">
+          <button class="btn btn-real" id="save-real-btn" onclick="saveSample('real')">💾 Save as Real</button>
+          <button class="btn btn-spoof" id="save-spoof-btn" onclick="saveSample('spoof')">🚨 Save as Spoof</button>
+        </div>
+        <div class="save-msg" id="save-msg"></div>
+      </div>
+    </div>
+
+    <!-- Spinner -->
+    <div class="spinner-wrap" id="spinner" style="display:none">
+      <div class="spinner"></div>
+      <div class="spinner-text">Analyzing audio…</div>
+      <div class="spinner-sub">Running multi-window CNN inference</div>
+    </div>
+
+    <!-- Result -->
+    <div id="result-container"></div>
+
+  </div>
+
+  <!-- ═══ HISTORY PAGE ═══ -->
+  <div class="page" id="page-history">
+    <div class="header">
+      <div class="header-row">
+        <h1>📜 History<span>Past Analysis Results</span></h1>
+        <button class="btn btn-ghost" id="clear-history-btn" onclick="clearHistory()" style="width:auto;padding:6px 12px;font-size:12px;color:var(--spoof);border-color:rgba(239,68,68,0.25);display:none">🗑 Clear</button>
+      </div>
+    </div>
+    <div id="history-stats"></div>
+    <div id="history-list"></div>
+  </div>
+
+  <!-- ═══ SETTINGS PAGE ═══ -->
+  <div class="page" id="page-settings">
+    <div class="header">
+      <h1>⚙️ Settings<span>Configure Backend</span></h1>
+    </div>
+
+    <!-- Backend URL -->
+    <div class="card">
+      <div class="section-head">
+        <span>🖥️</span>
+        <span class="section-label">Backend Connection</span>
+      </div>
+
+      <div class="input-label">Flask Server URL</div>
+      <input type="url" class="url-input" id="url-input" placeholder="http://192.168.x.x:5000" autocomplete="off" autocapitalize="off" />
+      <div class="input-hint">
+        Your phone and PC must be on the same Wi-Fi. Run <code style="background:rgba(124,58,237,0.15);color:var(--purple);padding:1px 4px;border-radius:4px">ipconfig</code> on Windows to find your IPv4 address.
+      </div>
+
+      <button class="btn btn-ghost" style="margin-bottom:10px" onclick="testConnection()" id="test-btn">
+        📡 Test Connection
+      </button>
+      <div id="conn-result"></div>
+
+      <div class="url-btn-row">
+        <button class="btn btn-accent" id="save-url-btn" onclick="saveUrl()">💾 Save URL</button>
+        <button class="btn btn-ghost" onclick="resetUrl()">↩ Reset</button>
+      </div>
+
+      <div class="current-url-box">
+        <div class="current-url-label">ACTIVE URL</div>
+        <div class="current-url-val" id="active-url-display"></div>
+      </div>
+    </div>
+
+    <!-- Data -->
+    <div class="card">
+      <div class="section-head"><span>📁</span><span class="section-label">Data & History</span></div>
+      <div class="setting-row">
+        <div class="setting-icon">🕒</div>
+        <div class="setting-body">
+          <div class="setting-label">Analysis History</div>
+          <div class="setting-desc" id="history-count-label">0 records stored</div>
+        </div>
+        <button class="danger-btn" id="settings-clear-btn" onclick="clearHistory()" style="display:none">Clear</button>
+      </div>
+    </div>
+
+    <!-- About -->
+    <div class="card">
+      <div class="section-head"><span>🛡️</span><span class="section-label">About</span></div>
+      <div class="setting-row"><div class="setting-icon">📱</div><div class="setting-body"><div class="setting-label">Version</div><div class="setting-desc">1.0.0 — PWA</div></div></div>
+      <div class="divider"></div>
+      <div class="setting-row"><div class="setting-icon">🧠</div><div class="setting-body"><div class="setting-label">Model</div><div class="setting-desc">CNN with Delta-MFCC (3-channel)</div></div></div>
+      <div class="divider"></div>
+      <div class="setting-row"><div class="setting-icon">🔬</div><div class="setting-body"><div class="setting-label">Analysis</div><div class="setting-desc">Multi-window voting + speaker heuristic</div></div></div>
+    </div>
+
+    <!-- Tips -->
+    <div class="card" style="background:rgba(124,58,237,0.06);border-color:rgba(124,58,237,0.2)">
+      <div class="section-head"><span>💡</span><span class="section-label">Tips for Best Accuracy</span></div>
+      <ul class="tip-list">
+        <li>🎙️ Record for 4+ seconds in a quiet environment</li>
+        <li>📶 Same Wi-Fi network as the Flask server</li>
+        <li>💾 Save labeled samples to improve the model</li>
+        <li>🔄 Retrain after collecting 50+ new samples</li>
+      </ul>
+    </div>
+  </div>
+
+</div>
+
+<!-- Bottom Navigation -->
+<nav class="bottom-nav">
+  <div class="nav-item active" id="nav-detect" onclick="switchTab('detect')">
+    <div class="nav-icon">🛡️</div>
+    <div class="nav-label">Detect</div>
+  </div>
+  <div class="nav-item" id="nav-history" onclick="switchTab('history')">
+    <div class="nav-icon">📜</div>
+    <div class="nav-label">History</div>
+  </div>
+  <div class="nav-item" id="nav-settings" onclick="switchTab('settings')">
+    <div class="nav-icon">⚙️</div>
+    <div class="nav-label">Settings</div>
+  </div>
+</nav>
+
+<script>
+// ═══════════════════════════════════════════════════
+//  STATE
+// ═══════════════════════════════════════════════════
+const DEFAULT_BACKEND = window.location.origin; // Same origin as Flask!
+let backendUrl = localStorage.getItem('backendUrl') || DEFAULT_BACKEND;
+let selectedFile = null;
+let mediaRecorder = null;
+let recordingChunks = [];
+let recordingTimer = null;
+let recordingStartTime = 0;   // Date.now() at start
+let recordingSeconds = 0;     // last known elapsed seconds
+let isRecording = false;
+let isAnalyzing = false;
+let lastRecordingBlob = null;
+let waveAnimFrame = null;
+let analyserNode = null;
+
+// ═══════════════════════════════════════════════════
+//  INIT
+// ═══════════════════════════════════════════════════
+window.addEventListener('DOMContentLoaded', () => {
+  buildWaveform();
+  document.getElementById('url-input').value = backendUrl;
+  document.getElementById('active-url-display').textContent = backendUrl;
+  updateHistoryCountLabel();
+  pingBackend();
+  renderHistory();
+
+  // Hide install banner if not Safari or already standalone
+  if (window.navigator.standalone || !navigator.userAgent.includes('Safari') || navigator.userAgent.includes('Chrome')) {
+    document.getElementById('install-banner').style.display = 'none';
+  }
+});
+
+// ═══════════════════════════════════════════════════
+//  TAB NAVIGATION
+// ═══════════════════════════════════════════════════
+function switchTab(tab) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById('page-' + tab).classList.add('active');
+  document.getElementById('nav-' + tab).classList.add('active');
+  if (tab === 'history') renderHistory();
+  if (tab === 'settings') {
+    document.getElementById('url-input').value = backendUrl;
+    document.getElementById('active-url-display').textContent = backendUrl;
+    updateHistoryCountLabel();
+  }
+}
+
+// ═══════════════════════════════════════════════════
+//  WAVEFORM
+// ═══════════════════════════════════════════════════
+const BARS = 32;
+function buildWaveform() {
+  const wf = document.getElementById('waveform');
+  for (let i = 0; i < BARS; i++) {
+    const bar = document.createElement('div');
+    bar.className = 'wave-bar';
+    bar.style.height = '8px';
+    wf.appendChild(bar);
+  }
+}
+
+function animateWave(analyser) {
+  const bars = document.querySelectorAll('.wave-bar');
+  const dataArr = new Uint8Array(analyser.frequencyBinCount);
+  function draw() {
+    waveAnimFrame = requestAnimationFrame(draw);
+    analyser.getByteFrequencyData(dataArr);
+    bars.forEach((bar, i) => {
+      const idx = Math.floor(i * dataArr.length / BARS);
+      const val = dataArr[idx] / 255;
+      const h = Math.max(4, val * 56);
+      bar.style.height = h + 'px';
+      bar.classList.toggle('active', isRecording);
+    });
+  }
+  draw();
+}
+
+function stopWaveAnim() {
+  if (waveAnimFrame) cancelAnimationFrame(waveAnimFrame);
+  document.querySelectorAll('.wave-bar').forEach(b => {
+    b.style.height = '8px'; b.classList.remove('active');
+  });
+}
+
+// ═══════════════════════════════════════════════════
+//  CONNECTION
+// ═══════════════════════════════════════════════════
+async function pingBackend() {
+  const dot = document.getElementById('conn-dot');
+  const lbl = document.getElementById('conn-label');
+  dot.style.background = '#f59e0b'; lbl.textContent = 'Checking…';
+  try {
+    const res = await fetch(backendUrl + '/ping', { signal: AbortSignal.timeout(8000) });
+    if (res.ok) {
+      dot.style.background = '#22c55e'; lbl.textContent = 'Online';
+    } else {
+      dot.style.background = '#ef4444'; lbl.textContent = 'Offline';
+    }
+  } catch {
+    dot.style.background = '#ef4444'; lbl.textContent = 'Offline';
+  }
+}
+
+// ═══════════════════════════════════════════════════
+//  FILE UPLOAD
+// ═══════════════════════════════════════════════════
+function onFileSelected(input) {
+  const file = input.files[0];
+  if (!file) return;
+
+  // iOS doesn't filter by MIME — validate extension/type client-side
+  const name = file.name.toLowerCase();
+  const validExts = ['.wav','.mp3','.flac','.m4a','.aac','.ogg','.webm','.opus','.aiff','.caf'];
+  const validTypes = ['audio/', 'video/ogg', 'video/webm']; // webm/ogg may have audio/video MIME on iOS
+  const extOk = validExts.some(e => name.endsWith(e));
+  const typeOk = validTypes.some(t => file.type.startsWith(t)) || file.type === '';
+
+  if (!extOk && !typeOk) {
+    alert('Please select an audio file (WAV, MP3, M4A, FLAC, etc.)');
+    input.value = '';
+    return;
+  }
+
+  selectedFile = file;
+  document.getElementById('file-name-label').textContent = file.name;
+  document.getElementById('analyze-file-btn').disabled = false;
+
+  // Audio preview
+  const player = document.getElementById('file-audio-player');
+  const objUrl = URL.createObjectURL(file);
+  player.innerHTML = `<audio controls src="${objUrl}" style="width:100%;margin-top:10px;border-radius:8px"></audio>`;
+}
+
+async function analyzeFile() {
+  if (!selectedFile) return;
+  await sendToServer(selectedFile, selectedFile.name, 'Uploaded: ' + selectedFile.name);
+}
+
+// ═══════════════════════════════════════════════════
+//  RECORDING
+// ═══════════════════════════════════════════════════
+async function startRecording() {
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+
+    // Set up analyser for waveform
+    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    const source = audioCtx.createMediaStreamSource(stream);
+    analyserNode = audioCtx.createAnalyser();
+    analyserNode.fftSize = 256;
+    source.connect(analyserNode);
+    animateWave(analyserNode);
+
+    mediaRecorder = new MediaRecorder(stream, { mimeType: getSupportedMimeType() });
+    recordingChunks = [];
+    mediaRecorder.ondataavailable = e => { if (e.data.size > 0) recordingChunks.push(e.data); };
+    mediaRecorder.start(100);
+
+    isRecording = true;
+    recordingStartTime = Date.now();
+    recordingSeconds = 0;
+    document.getElementById('start-btn').disabled = true;
+    document.getElementById('stop-btn').disabled = false;
+    document.getElementById('timer').style.display = 'block';
+    document.getElementById('timer').textContent = '00:00';
+    document.getElementById('pulse-dot').style.display = 'block';
+    document.getElementById('status-msg').textContent = 'Recording… speak clearly';
+    document.getElementById('save-section').style.display = 'none';
+    document.getElementById('wave-label').classList.add('active');
+    document.getElementById('save-real-btn').textContent = '💾 Save as Real';
+    document.getElementById('save-spoof-btn').textContent = '🚨 Save as Spoof';
+    document.getElementById('save-msg').textContent = '';
+
+    // Use Date.now() diff for accurate timing (no drift)
+    recordingTimer = setInterval(() => {
+      recordingSeconds = Math.floor((Date.now() - recordingStartTime) / 1000);
+      const mm = String(Math.floor(recordingSeconds / 60)).padStart(2, '0');
+      const ss = String(recordingSeconds % 60).padStart(2, '0');
+      document.getElementById('timer').textContent = `${mm}:${ss}`;
+    }, 500); // 500ms poll for smoother display
+
+  } catch (err) {
+    alert('Microphone error: ' + err.message + '\n\nMake sure you allow microphone access in your browser.');
+  }
+}
+
+function getSupportedMimeType() {
+  const types = ['audio/webm;codecs=opus', 'audio/webm', 'audio/mp4', 'audio/ogg;codecs=opus', ''];
+  return types.find(t => !t || MediaRecorder.isTypeSupported(t)) || '';
+}
+
+async function stopRecording() {
+  if (!mediaRecorder || !isRecording) return;
+  // Get actual elapsed seconds from Date.now() diff
+  const elapsed = Math.floor((Date.now() - recordingStartTime) / 1000);
+  if (elapsed < 2) {
+    alert('Please record for at least 2 seconds.');
+    return;
+  }
+
+  clearInterval(recordingTimer);
+  isRecording = false;
+  recordingSeconds = elapsed;
+  stopWaveAnim();
+  document.getElementById('wave-label').classList.remove('active');
+  document.getElementById('pulse-dot').style.display = 'none';
+  document.getElementById('timer').style.display = 'none';
+  document.getElementById('start-btn').disabled = false;
+  document.getElementById('stop-btn').disabled = true;
+  document.getElementById('status-msg').textContent = 'Processing recording…';
+
+  // Use onstop event to ensure all chunks are collected before processing
+  await new Promise(resolve => {
+    mediaRecorder.onstop = resolve;
+    mediaRecorder.stop();
+  });
+  mediaRecorder.stream.getTracks().forEach(t => t.stop());
+
+  const mimeType = mediaRecorder.mimeType || 'audio/mp4';
+  const ext = mimeType.includes('mp4') || mimeType.includes('m4a') ? '.m4a'
+             : mimeType.includes('ogg') ? '.ogg'
+             : mimeType.includes('webm') ? '.webm'
+             : '.wav';
+  const blob = new Blob(recordingChunks, { type: mimeType });
+  lastRecordingBlob = blob;
+
+  // Show audio preview
+  const audioUrl = URL.createObjectURL(blob);
+  document.getElementById('mic-audio-player').innerHTML =
+    `<audio controls src="${audioUrl}" style="width:100%;margin-top:10px;border-radius:8px"></audio>`;
+
+  document.getElementById('status-msg').textContent = 'Sending to server…';
+  await sendToServer(blob, 'recording' + ext, 'Live Microphone (' + elapsed + 's)');
+  document.getElementById('status-msg').textContent = 'Tap Start to record again';
+  document.getElementById('save-section').style.display = 'block';
+}
+
+// ═══════════════════════════════════════════════════
+//  SEND TO SERVER
+// ═══════════════════════════════════════════════════
+async function sendToServer(fileOrBlob, filename, source) {
+  if (isAnalyzing) return;
+  isAnalyzing = true;
+  document.getElementById('spinner').style.display = 'block';
+  document.getElementById('result-container').innerHTML = '';
+
+  try {
+    const formData = new FormData();
+    formData.append('file', fileOrBlob, filename);
+
+    const res = await fetch(backendUrl + '/predict', {
+      method: 'POST', body: formData,
+      signal: AbortSignal.timeout(90000),
+    });
+
+    const data = await res.json();
+    renderResult(data);
+
+    if (!data.error) {
+      saveToHistory({ ...data, source, timestamp: new Date().toISOString() });
+    }
+
+    // Update connection badge
+    document.getElementById('conn-dot').style.background = '#22c55e';
+    document.getElementById('conn-label').textContent = 'Online';
+
+  } catch (err) {
+    const isTimeout = err.name === 'TimeoutError' || err.name === 'AbortError';
+    renderResult({ error: isTimeout
+      ? 'Request timed out. Server may be busy — try a shorter recording.'
+      : 'Cannot reach server: ' + err.message + '\n\nFix: Settings → update IP → Test Connection'
+    });
+    document.getElementById('conn-dot').style.background = '#ef4444';
+    document.getElementById('conn-label').textContent = 'Offline';
+  } finally {
+    isAnalyzing = false;
+    document.getElementById('spinner').style.display = 'none';
+  }
+}
+
+// ═══════════════════════════════════════════════════
+//  RENDER RESULT
+// ═══════════════════════════════════════════════════
+function renderResult(data) {
+  const container = document.getElementById('result-container');
+
+  if (data.error) {
+    container.innerHTML = `
+      <div class="result-card" style="border-color:rgba(245,158,11,0.3)">
+        <div style="background:rgba(245,158,11,0.08)" class="result-bg"></div>
+        <div class="result-icon">⚠️</div>
+        <div class="result-label" style="font-size:18px;color:#f59e0b">Analysis Error</div>
+        <div class="score-text" style="color:var(--sub);font-size:13px;white-space:pre-line">${data.error}</div>
+      </div>`;
+    return;
+  }
+
+  let icon, color, bgColor, label;
+  const resultStr = data.result || '';
+  if (resultStr === 'REAL VOICE') {
+    icon = '✅'; color = '#22c55e'; bgColor = 'rgba(34,197,94,0.08)'; label = 'REAL VOICE';
+  } else if (resultStr.includes('% HUMAN') || resultStr.includes('MIXED') || resultStr.includes('% AI')) {
+    icon = '🟡'; color = '#fbbf24'; bgColor = 'rgba(251,191,36,0.08)'; label = resultStr;
+  } else {
+    icon = '🚨'; color = '#ef4444'; bgColor = 'rgba(239,68,68,0.08)'; label = 'AI VOICE';
+  }
+
+  // Always round confidence to integer
+  const confidence = Math.round(Number(data.confidence) || 0);
+
+  // Build window bars HTML
+  let barsHtml = '';
+  const scores = data.window_scores || data.active_scores;
+  if (scores && scores.length > 0) {
+    barsHtml = `<div class="window-bars">
+      <div class="window-bars-title">Per-window analysis (${scores.length} window${scores.length > 1 ? 's' : ''})</div>
+      <div class="window-bars-row">
+        ${scores.map((s, idx) => {
+          const isReal = s > (data.threshold ?? 0.5);
+          const h = Math.max(5, Math.round(s * 50));
+          return `<div class="window-bar-col">
+            <div class="window-bar-fill" style="height:${h}px;background:${isReal ? '#4ade80' : '#f87171'}"></div>
+            <div class="window-bar-label">${Number(s).toFixed(2)}</div>
+          </div>`;
+        }).join('')}
+      </div>
+    </div>`;
+  }
+
+  container.innerHTML = `
+    <div class="result-card" style="border-color:${color}33">
+      <div class="result-bg" style="background:${bgColor}"></div>
+      <div class="result-icon">${icon}</div>
+      <div class="result-label" style="color:${color}">${label}</div>
+      <div class="confidence-bar-wrap">
+        <div class="confidence-bar-fill" id="conf-bar" style="width:0%;background:${color}"></div>
+      </div>
+      <div class="confidence-text">Confidence: <strong>${confidence}%</strong></div>
+      ${data.raw_score !== undefined ? `
+        <div class="score-text">score ${data.raw_score} · threshold ${data.threshold}</div>
+        <div class="score-text">CNN ${data.cnn_score} &minus; penalty ${data.penalty ?? 0} = ${data.raw_score}<br>
+        real votes: ${data.real_votes ?? '?'}/${data.windows_used ?? '?'} windows</div>` : ''}
+      ${barsHtml}
+    </div>`;
+
+  // Animate confidence bar after paint
+  requestAnimationFrame(() => {
+    setTimeout(() => {
+      const bar = document.getElementById('conf-bar');
+      if (bar) bar.style.width = confidence + '%';
+    }, 30);
+  });
+}
+
+// ═══════════════════════════════════════════════════
+//  SAVE SAMPLE
+// ═══════════════════════════════════════════════════
+async function saveSample(type) {
+  if (!lastRecordingBlob) { alert('No recording found.'); return; }
+  const isReal = type === 'real';
+  const btn = document.getElementById(isReal ? 'save-real-btn' : 'save-spoof-btn');
+  const msg = document.getElementById('save-msg');
+  btn.disabled = true;
+  msg.textContent = 'Saving…'; msg.style.color = 'var(--muted)';
+  try {
+    const formData = new FormData();
+    formData.append('file', lastRecordingBlob, isReal ? 'real_sample.wav' : 'spoof_sample.wav');
+    const res = await fetch(backendUrl + (isReal ? '/save-real' : '/save-spoof'), { method: 'POST', body: formData });
+    const data = await res.json();
+    if (data.error) {
+      msg.textContent = '❌ ' + data.error; msg.style.color = '#f87171';
+    } else {
+      msg.textContent = '✅ ' + data.message + ' · Retrain at 50+ samples.'; msg.style.color = '#4ade80';
+      btn.textContent = isReal ? '✅ Saved!' : '✅ Saved!';
+    }
+  } catch (err) {
+    msg.textContent = '❌ ' + err.message; msg.style.color = '#f87171';
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+// ═══════════════════════════════════════════════════
+//  HISTORY  (localStorage)
+// ═══════════════════════════════════════════════════
+function getHistory() { try { return JSON.parse(localStorage.getItem('vsd_history') || '[]'); } catch { return []; } }
+function saveToHistory(entry) {
+  const h = getHistory();
+  h.unshift({ id: Date.now().toString(), ...entry });
+  localStorage.setItem('vsd_history', JSON.stringify(h.slice(0, 50)));
+}
+
+function clearHistory() {
+  if (!confirm('Delete all history records?')) return;
+  localStorage.removeItem('vsd_history');
+  renderHistory();
+  updateHistoryCountLabel();
+}
+
+function deleteHistoryItem(id) {
+  const h = getHistory().filter(e => e.id !== id);
+  localStorage.setItem('vsd_history', JSON.stringify(h));
+  renderHistory();
+  updateHistoryCountLabel();
+}
+
+function updateHistoryCountLabel() {
+  const n = getHistory().length;
+  const el = document.getElementById('history-count-label');
+  if (el) el.textContent = n + ' records stored';
+  const cb = document.getElementById('settings-clear-btn');
+  if (cb) cb.style.display = n > 0 ? 'block' : 'none';
+}
+
+function formatRelTime(iso) {
+  const d = new Date(iso), now = new Date();
+  const diff = Math.floor((now - d) / 60000);
+  if (diff < 1) return 'Just now';
+  if (diff < 60) return diff + 'm ago';
+  if (diff < 1440) return Math.floor(diff / 60) + 'h ago';
+  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+}
+
+function renderHistory() {
+  const history = getHistory();
+  const statsEl = document.getElementById('history-stats');
+  const listEl = document.getElementById('history-list');
+  const clearBtn = document.getElementById('clear-history-btn');
+
+  clearBtn.style.display = history.length > 0 ? 'block' : 'none';
+
+  if (history.length === 0) {
+    statsEl.innerHTML = '';
+    listEl.innerHTML = `<div class="empty-state">
+      <div style="font-size:48px">📭</div>
+      <p>No history yet.<br>Analyze your first audio on the Detect tab.</p>
+    </div>`;
+    return;
+  }
+
+  const real = history.filter(h => h.result === 'REAL VOICE').length;
+  const spoof = history.filter(h => h.result === 'AI VOICE').length;
+  statsEl.innerHTML = `<div class="stats-banner">
+    <div class="stat-pill"><div class="stat-value" style="color:var(--purple)">${history.length}</div><div class="stat-label">Total</div></div>
+    <div class="stat-pill"><div class="stat-value" style="color:#22c55e">${real}</div><div class="stat-label">Real</div></div>
+    <div class="stat-pill"><div class="stat-value" style="color:#ef4444">${spoof}</div><div class="stat-label">AI</div></div>
+    <div class="stat-pill"><div class="stat-value" style="color:#fbbf24">${history.length - real - spoof}</div><div class="stat-label">Mixed</div></div>
+  </div>`;
+
+  listEl.innerHTML = history.map(item => {
+    let icon, color;
+    if (item.result === 'REAL VOICE') { icon = '✅'; color = '#22c55e'; }
+    else if (item.result?.includes('% HUMAN')) { icon = '🟡'; color = '#fbbf24'; }
+    else { icon = '🚨'; color = '#ef4444'; }
+    return `<div class="history-item">
+      <div class="history-icon">${icon}</div>
+      <div class="history-body">
+        <div class="history-result" style="color:${color}">${item.result}</div>
+        <div class="history-source">${item.source || 'Audio sample'}</div>
+        <div class="history-meta">Confidence: ${item.confidence}% · ${formatRelTime(item.timestamp)}</div>
+        <div class="history-bar-wrap"><div class="history-bar-fill" style="width:${item.confidence||0}%;background:${color}"></div></div>
+      </div>
+      <button class="history-delete" onclick="deleteHistoryItem('${item.id}')">🗑</button>
+    </div>`;
+  }).join('');
+
+  updateHistoryCountLabel();
+}
+
+// ═══════════════════════════════════════════════════
+//  SETTINGS
+// ═══════════════════════════════════════════════════
+function saveUrl() {
+  const val = document.getElementById('url-input').value.trim().replace(/\/$/, '');
+  if (!val.startsWith('http')) { alert('URL must start with http://'); return; }
+  backendUrl = val;
+  localStorage.setItem('backendUrl', val);
+  document.getElementById('active-url-display').textContent = val;
+  alert('URL saved! Connection badge will update on next ping.');
+  pingBackend();
+}
+
+function resetUrl() {
+  backendUrl = DEFAULT_BACKEND;
+  localStorage.setItem('backendUrl', DEFAULT_BACKEND);
+  document.getElementById('url-input').value = DEFAULT_BACKEND;
+  document.getElementById('active-url-display').textContent = DEFAULT_BACKEND;
+  pingBackend();
+}
+
+async function testConnection() {
+  const btn = document.getElementById('test-btn');
+  const resultEl = document.getElementById('conn-result');
+  const url = document.getElementById('url-input').value.trim().replace(/\/$/, '');
+  btn.textContent = '⏳ Testing…'; btn.disabled = true;
+  resultEl.innerHTML = '';
+  try {
+    const t0 = Date.now();
+    const res = await fetch(url + '/ping', { signal: AbortSignal.timeout(10000) });
+    const ms = Date.now() - t0;
+    if (res.status < 500) {
+      resultEl.innerHTML = `<div class="conn-result" style="border-color:rgba(34,197,94,0.3);color:#22c55e">
+        ✅ <div><div>Connected successfully</div><div class="detail">Latency: ${ms}ms</div></div></div>`;
+    } else {
+      throw new Error('Server error ' + res.status);
+    }
+  } catch (err) {
+    resultEl.innerHTML = `<div class="conn-result" style="border-color:rgba(239,68,68,0.3);color:#ef4444">
+      ❌ <div><div>Connection failed</div>
+      <div class="detail">• Is Flask running? (python app.py)<br>• Is IP correct? (ipconfig → IPv4)<br>• Same Wi-Fi network?<br>• Windows Firewall blocks port 5000?</div>
+      </div></div>`;
+  } finally {
+    btn.textContent = '📡 Test Connection'; btn.disabled = false;
+  }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,49 @@
+{
+  "expo": {
+    "name": "Voice Spoof Detection",
+    "slug": "voice-spoof-detection",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "dark",
+    "newArchEnabled": true,
+    "backgroundColor": "#0a0a1a",
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#0a0a1a"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.voicespoof.detection",
+      "infoPlist": {
+        "NSMicrophoneUsageDescription": "Voice Spoof Detection needs microphone access to record and analyze audio for spoof detection.",
+        "NSDocumentsFolderUsageDescription": "Voice Spoof Detection needs access to documents to upload audio files for analysis."
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#0a0a1a"
+      },
+      "package": "com.voicespoof.detection",
+      "permissions": [
+        "android.permission.RECORD_AUDIO",
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.WRITE_EXTERNAL_STORAGE"
+      ],
+      "edgeToEdgeEnabled": true
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      [
+        "expo-av",
+        {
+          "microphonePermission": "Voice Spoof Detection needs microphone access to record and analyze audio."
+        }
+      ]
+    ]
+  }
+}

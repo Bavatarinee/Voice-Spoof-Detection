@@ -1,0 +1,11 @@
+flask
+tensorflow
+librosa
+numpy
+soundfile
+scikit-learn
+scipy
+pyopenssl
+matplotlib
+seaborn
+flask-cors
